@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FlameFlip — Flame Vanilla Arcade &amp; Provably Fair Games</title>
+<meta name="description" content="Fan-made arcade for the Flame Vanilla Minecraft community. Play Coinflip, Upgrader and Blackjack with in-game coins. In-game currency only — not real money.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='6' fill='%231a1d20'/%3E%3Cpath d='M12 3c1 2.6 2.6 3.9 3.7 5.6 1 1.6 1.6 3.1 1.6 4.7 0 3.3-2.4 5.9-5.3 5.9S6.7 16.6 6.7 13.3c0-2.1 1-3.6 2.2-5.1C10 6.7 11.4 5.1 12 3z' fill='%23ff7a1a'/%3E%3Cpath d='M12 12c.7 1.2 1.6 2 1.6 3.4a1.7 1.7 0 1 1-3.4 0c0-1.4 1-2.2 1.8-3.4z' fill='%23ffc247'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bai+Jamjuree:wght@500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<!-- ======= icon symbols ======= -->
+<svg style="display:none" aria-hidden="true">
+  <symbol id="i-flame" viewBox="0 0 24 24">
+    <path d="M12 2c1 2.9 2.7 4.3 3.9 6.1 1.1 1.7 1.8 3.4 1.8 5.2 0 3.6-2.5 6.6-5.7 6.6S6.3 16.9 6.3 13.3c0-2.3 1.1-4 2.4-5.7C9.9 5.9 11.3 4.3 12 2z"/>
+    <path d="M12 11.5c.8 1.3 1.7 2.2 1.7 3.6a1.75 1.75 0 1 1-3.5 0c0-1.4 1-2.3 1.8-3.6z" class="ic-in"/>
+  </symbol>
+  <symbol id="i-coin" viewBox="0 0 24 24">
+    <circle cx="12" cy="12" r="9" fill="#ffb020" stroke="#8a5a00" stroke-width="1.5"/>
+    <circle cx="12" cy="12" r="5.6" fill="none" stroke="#8a5a00" stroke-width="1.4"/>
+    <path d="M12.6 8.6c.5 1 1.1 1.5 1.6 2.2.4.6.6 1.2.6 1.9 0 1.3-.9 2.4-2 2.4s-2-1.1-2-2.4c0-.7.4-1.3.9-2 .5-.6 1-1.2.9-2.1z" fill="#8a5a00"/>
+  </symbol>
+  <symbol id="i-gamepad" viewBox="0 0 24 24">
+    <path d="M6 12h4M8 10v4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+    <path d="M15.5 11h.01M18 13h.01" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/>
+    <path d="M17.3 5H6.7C4.1 5 2 7 1.8 9.6l-.5 5C1.1 17.2 3 19 5.2 19c1.2 0 2.3-.6 3-1.6L10 15h4l1.8 2.4c.7 1 1.8 1.6 3 1.6 2.2 0 4.1-1.8 3.9-4.4l-.5-5C22 7 19.9 5 17.3 5z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+  </symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24">
+    <path d="M12 2 4.5 5v6c0 5 3.2 8.9 7.5 11 4.3-2.1 7.5-6 7.5-11V5L12 2z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+    <path d="m8.7 11.8 2.3 2.3 4.3-4.4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+  </symbol>
+  <symbol id="i-gift" viewBox="0 0 24 24">
+    <path d="M12 7.2H8.4a2.1 2.1 0 1 1 0-4.2C11.2 3 12 7.2 12 7.2zM12 7.2h3.6a2.1 2.1 0 1 0 0-4.2C12.8 3 12 7.2 12 7.2z" fill="none" stroke="currentColor" stroke-width="2"/>
+    <path d="M17 21H7a3 3 0 0 1-3-3v-6h16v6a3 3 0 0 1-3 3zM4 12v-2a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v2M12 21v-9" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+  </symbol>
+  <symbol id="i-chat" viewBox="0 0 24 24">
+    <path d="M21 11.5a8.5 8.5 0 0 1-8.5 8.5c-1.3 0-2.6-.3-3.7-.8L3 21l1.8-5.8A8.5 8.5 0 1 1 21 11.5z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+  </symbol>
+  <symbol id="i-sound" viewBox="0 0 24 24">
+    <path d="M11 5 6.5 9H3v6h3.5L11 19V5z" fill="currentColor"/>
+    <path d="M15 9.5a4 4 0 0 1 0 5M17.5 7a7.5 7.5 0 0 1 0 10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+  </symbol>
+  <symbol id="i-sound-off" viewBox="0 0 24 24">
+    <path d="M11 5 6.5 9H3v6h3.5L11 19V5z" fill="currentColor"/>
+    <path d="m15 9.5 5 5m0-5-5 5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+  </symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24">
+    <path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+  </symbol>
+  <symbol id="i-copy" viewBox="0 0 24 24">
+    <rect x="9" y="9" width="12" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="2"/>
+    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" fill="none" stroke="currentColor" stroke-width="2"/>
+  </symbol>
+  <symbol id="i-check" viewBox="0 0 24 24">
+    <path d="m4.5 12.5 5 5 10-11" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  </symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24">
+    <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/>
+    <path d="M12 7v5.5l3.5 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+  </symbol>
+  <symbol id="i-trophy" viewBox="0 0 24 24">
+    <path d="M8 21h8M12 17v4M17 4H7v6a5 5 0 0 0 10 0V4z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M7 6H4a3 3 0 0 0 3 4M17 6h3a3 3 0 0 1-3 4" fill="none" stroke="currentColor" stroke-width="2"/>
+  </symbol>
+  <symbol id="i-cards" viewBox="0 0 24 24">
+    <rect x="3" y="5" width="10" height="14" rx="2" transform="rotate(-8 8 12)" fill="none" stroke="currentColor" stroke-width="2"/>
+    <rect x="11" y="5" width="10" height="14" rx="2" transform="rotate(8 16 12)" fill="none" stroke="currentColor" stroke-width="2"/>
+    <path d="M16 10.5c.4.7 1 1.1 1 1.9a1.1 1.1 0 1 1-2.2 0c0-.8.8-1.2 1.2-1.9z" fill="currentColor"/>
+  </symbol>
+  <symbol id="i-gauge" viewBox="0 0 24 24">
+    <path d="M4 16a8.5 8.5 0 0 1 16.5-3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+    <path d="M12 15.5 16.5 8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+    <circle cx="12" cy="16" r="1.8" fill="currentColor"/>
+  </symbol>
+  <symbol id="i-bolt" viewBox="0 0 24 24">
+    <path d="M13 2 4 14h6l-1 8 9-12h-6l1-8z" fill="currentColor"/>
+  </symbol>
+  <symbol id="i-chev" viewBox="0 0 24 24">
+    <path d="m6 9 6 6 6-6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+  </symbol>
+</svg>
+
+<!-- ======= navbar ======= -->
+<header class="navbar">
+  <div class="nav-left">
+    <a class="logo" href="#/">
+      <svg class="logo-flame"><use href="#i-flame"/></svg>
+      <span class="logo-flame-txt">FLAME</span><span class="logo-flip">FLIP</span>
+    </a>
+    <div class="nav-dd" id="games-dd">
+      <button class="nav-btn" id="games-btn" aria-haspopup="true" aria-expanded="false">
+        <svg><use href="#i-gamepad"/></svg><span class="nav-label">Games</span>
+        <svg class="chev"><use href="#i-chev"/></svg>
+      </button>
+      <div class="dd-menu" id="games-menu" hidden></div>
+    </div>
+    <a class="nav-btn" href="#/fairness">
+      <svg><use href="#i-shield"/></svg><span class="nav-label">Fairness</span>
+    </a>
+  </div>
+
+  <div class="balance-pill" id="balance-pill">
+    <svg class="coin-ic"><use href="#i-coin"/></svg>
+    <span id="balance-val">0</span>
+    <span class="coin-label">coins</span>
+    <button class="coin-plus" id="deposit-btn" aria-label="Deposit"><svg><use href="#i-plus"/></svg></button>
+  </div>
+
+  <div class="nav-right">
+    <button class="btn-brand" id="deposit-nav">Deposit</button>
+    <button class="btn-ghost" id="withdraw-btn">Withdraw</button>
+    <button class="btn-ghost" id="promo-btn">Promo</button>
+    <button class="btn-ghost" id="contact-btn">Contact</button>
+    <button class="btn-brand" id="signin-btn">Sign In</button>
+  </div>
+</header>
+
+<!-- ======= status bar ======= -->
+<div class="statusbar">
+  <button class="chat-status" id="chat-toggle">
+    <svg><use href="#i-chat"/></svg><span>Live Chat</span>
+  </button>
+  <div class="status-right">
+    <button class="status-btn" id="bonus-btn"><svg><use href="#i-gift"/></svg> Daily Bonus</button>
+    <button class="status-btn icon-only" id="sound-btn" aria-label="Toggle sound"><svg><use href="#i-sound"/></svg></button>
+  </div>
+</div>
+
+<!-- ======= layout ======= -->
+<div class="layout">
+  <aside class="chat" id="chat-panel">
+    <div class="chat-scroll" id="chat-scroll"></div>
+    <form class="chat-input-row" id="chat-form">
+      <input type="text" id="chat-input" maxlength="160" placeholder="Say something…" autocomplete="off">
+      <button type="submit" class="btn-brand sm">Send</button>
+    </form>
+  </aside>
+
+  <div class="main-col">
+    <main id="view"></main>
+    <footer class="site-footer">
+      <div class="footer-brand">
+        <svg class="logo-flame sm"><use href="#i-flame"/></svg>
+        <strong>FLAME<span>FLIP</span></strong>
+      </div>
+      <p>FlameFlip is a fan-made arcade for the <strong>flamevannila.eu</strong> community. Coins are in-game
+      Minecraft currency <strong>only — not real money</strong>. Play for fun and responsibly. Not affiliated with
+      Mojang or Microsoft. Deposits are sent with <code>/pay washerecookie</code> in-game; withdrawal requests
+      go straight to our Discord staff.</p>
+    </footer>
+  </div>
+</div>
+
+<!-- ======= deposit modal ======= -->
+<div class="modal-backdrop" id="modal-deposit" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-label="Deposit">
+    <button class="modal-x" data-close aria-label="Close"><svg class="x"><use href="#i-plus"/></svg></button>
+    <div class="modal-head">
+      <svg class="coin-ic big"><use href="#i-coin"/></svg>
+      <h2>Deposit coins</h2>
+    </div>
+
+    <div id="dep-form">
+      <ol class="dep-steps">
+        <li>
+          <span class="step-n">1</span>
+          <div>Join <strong id="dep-server">flamevannila.eu</strong> in Minecraft.</div>
+        </li>
+        <li>
+          <span class="step-n">2</span>
+          <div>
+            Pay <strong id="dep-payee">washerecookie</strong> the amount you want with the in-game command:
+            <div class="cmd-row">
+              <code id="dep-cmd">/pay washerecookie &lt;amount&gt;</code>
+              <button class="btn-ghost sm" id="dep-copy" title="Copy command"><svg><use href="#i-copy"/></svg></button>
+            </div>
+          </div>
+        </li>
+        <li>
+          <span class="step-n">3</span>
+          <div>Enter the exact amount you paid — <strong>min 1k</strong>, <strong>max 50m per deposit</strong>.</div>
+        </li>
+        <li>
+          <span class="step-n">4</span>
+          <div>Click <strong>I've paid</strong> — coins are credited after a <strong>30-second</strong> check.</div>
+        </li>
+      </ol>
+
+      <div class="amt-row">
+        <input type="text" id="dep-amount" inputmode="numeric" placeholder="Amount, e.g. 5000000">
+        <button class="btn-ghost sm" id="dep-max">Max</button>
+      </div>
+      <div class="chip-row" id="dep-chips">
+        <button class="chip" data-v="1000000">1m</button>
+        <button class="chip" data-v="10000000">10m</button>
+        <button class="chip" data-v="25000000">25m</button>
+        <button class="chip" data-v="50000000">50m</button>
+      </div>
+      <div class="form-err" id="dep-err"></div>
+      <button class="btn-brand wide" id="dep-submit">I've paid — start 30s check</button>
+      <p class="fineprint">In-game coins only — this is not real money.</p>
+    </div>
+
+    <div id="dep-pending" hidden>
+      <div class="pend-card" id="pend-card-wrap">
+        <svg class="pend-spin"><use href="#i-clock"/></svg>
+        <div class="pend-amount" id="pend-amount">—</div>
+        <div class="pend-status">Checking for payment…</div>
+        <div class="pend-timer" id="pend-timer">30s</div>
+        <div class="pend-bar"><div class="pend-bar-fill" id="pend-bar"></div></div>
+      </div>
+      <div class="pend-done" id="pend-done" hidden>
+        <svg class="pend-check"><use href="#i-check"/></svg>
+        <div class="pend-amount ok">Deposit complete!</div>
+        <div class="pend-status" id="pend-done-note"></div>
+      </div>
+      <button class="btn-ghost wide" id="dep-close">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- ======= withdraw modal ======= -->
+<div class="modal-backdrop" id="modal-withdraw" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-label="Withdraw">
+    <button class="modal-x" data-close><svg class="x"><use href="#i-plus"/></svg></button>
+    <div class="modal-head">
+      <svg class="ic big"><use href="#i-gift"/></svg>
+      <h2>Withdraw coins</h2>
+    </div>
+
+    <div class="wd-discord">
+      <svg class="ic"><use href="#i-bolt"/></svg>
+      <div>Your request is sent straight to our Discord staff. Coins arrive in-game
+      within <strong>10–30 minutes</strong> — <strong>max 5m per withdrawal</strong>.
+      Use your <strong>exact flamevannila.eu username</strong> so the right player gets paid.</div>
+    </div>
+
+    <div class="bet-label">Exact flamevannila.eu username</div>
+    <div class="amt-row">
+      <input type="text" id="wd-user" maxlength="16" placeholder="e.g. cookie412 — exactly as in-game" autocomplete="off">
+    </div>
+    <div class="bet-label" style="margin-top:10px">Amount</div>
+    <div class="amt-row">
+      <input type="text" id="wd-amount" inputmode="numeric" placeholder="Amount to withdraw">
+      <button class="btn-ghost sm" id="wd-max">Max</button>
+    </div>
+    <div class="form-err" id="wd-err"></div>
+    <button class="btn-brand wide" id="wd-submit">Send withdrawal request</button>
+
+    <div class="wd-list-label">Your requests</div>
+    <div class="wd-list" id="wd-list"></div>
+  </div>
+</div>
+
+<!-- ======= sign-in modal ======= -->
+<div class="modal-backdrop" id="modal-signin" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-label="Sign in">
+    <button class="modal-x" data-close><svg class="x"><use href="#i-plus"/></svg></button>
+    <div class="modal-head">
+      <svg class="ic big"><use href="#i-flame"/></svg>
+      <h2>Sign in</h2>
+    </div>
+    <p class="signin-note">Enter your <strong>exact flamevannila.eu</strong> Minecraft username — deposits and
+    withdrawals are matched to it, so a wrong name means the wrong player gets paid. It's saved in this
+    browser only; no password needed on this fan site.</p>
+    <div class="amt-row">
+      <input type="text" id="si-name" maxlength="16" placeholder="Minecraft username">
+    </div>
+    <div class="form-err" id="si-err"></div>
+    <button class="btn-brand wide" id="si-submit">Enter the arcade</button>
+  </div>
+</div>
+
+<!-- ======= contact modal ======= -->
+<div class="modal-backdrop" id="modal-contact" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-label="Contact">
+    <button class="modal-x" data-close><svg class="x"><use href="#i-plus"/></svg></button>
+    <div class="modal-head">
+      <svg class="ic big"><use href="#i-chat"/></svg>
+      <h2>Contact us</h2>
+    </div>
+    <p class="signin-note">Problems with a deposit or withdrawal? Reach the owner directly —
+    tap a name to copy it.</p>
+    <div class="contact-list">
+      <div class="contact-row">
+        <span class="c-ic"><svg><use href="#i-chat"/></svg></span>
+        <div class="c-who">
+          <div class="c-name">cookiemonke2</div>
+          <div class="c-where">Discord — fastest reply</div>
+        </div>
+        <button class="btn-ghost sm" id="contact-copy-discord">Copy</button>
+      </div>
+      <div class="contact-row">
+        <span class="c-ic game"><svg><use href="#i-gamepad"/></svg></span>
+        <div class="c-who">
+          <div class="c-name">cookie412</div>
+          <div class="c-where">In-game on flamevannila.eu</div>
+        </div>
+        <button class="btn-ghost sm" id="contact-copy-game">Copy</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ======= promo modal ======= -->
+<div class="modal-backdrop" id="modal-promo" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-label="Promo code">
+    <button class="modal-x" data-close><svg class="x"><use href="#i-plus"/></svg></button>
+    <div class="modal-head">
+      <svg class="ic big"><use href="#i-gift"/></svg>
+      <h2>Redeem a promo code</h2>
+    </div>
+    <p class="signin-note">Got a code from the community? Enter it below — each code works once per player.
+    Codes are case-insensitive.</p>
+    <div class="amt-row">
+      <input type="text" id="promo-code" maxlength="32" placeholder="e.g. COOKIE412" autocomplete="off" style="text-transform:uppercase">
+    </div>
+    <div class="form-err" id="promo-err"></div>
+    <button class="btn-brand wide" id="promo-submit">Redeem</button>
+    <div class="wd-list-label">Redeemed codes</div>
+    <div class="wd-list" id="promo-list"></div>
+  </div>
+</div>
+
+<div class="toasts" id="toasts"></div>
+
+<script src="js/fair.js"></script>
+<script src="js/games/coinflip.js"></script>
+<script src="js/games/upgrader.js"></script>
+<script src="js/games/blackjack.js"></script>
+<script src="js/games/limbo.js"></script>
+<script src="js/games/mines.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
