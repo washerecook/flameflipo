@@ -1,7 +1,8 @@
 /*
  * FlameFlip — app core.
- * State, routing, deposit (/pay washerecookie, 30s, 50m cap), withdrawals
- * (POST to a Discord webhook), daily bonus, chat, ticker, sounds.
+ * State, routing, deposit (/pay washerecookie, 60s check, 3m/5m caps), withdrawals
+ * (POST to a Discord webhook with @everyone), per-game activity notifications, daily
+ * bonus, chat, ticker, sounds.
  * Everything persists in localStorage; there is no server.
  */
 (function () {
@@ -13,8 +14,11 @@
     SERVER: 'flamevannila.eu',
     PAYEE: 'washerecookie',
     DEPOSIT_MIN: 1000,
-    DEPOSIT_MAX: 50000000,      // 50 million per deposit
-    DEPOSIT_DELAY_MS: 30000,    // 30 seconds
+    DEPOSIT_MAX: 3000000,       // 3 million per deposit
+    DEPOSIT_TOTAL_MAX: 5000000, // 5 million total per player
+    DEPOSIT_DELAY_MS: 60000,    // auto-credit after 60 seconds
+    DEPOSIT_GATE_MS: 30000,     // "I've paid" button unlocks after 30 seconds
+    BET_MAX: 5000000,           // 5 million max bet in every game
     BONUS_COOLDOWN_MS: 20 * 60 * 60 * 1000,
     WITHDRAW_WEBHOOK: 'https://discord.com/api/webhooks/1557082947771834399/-K9jBFRnN4_GODcx3biNZY3i-MIs6b3lvP2N0NjprxZGFwqLktd6J_IOLyRwb9TevYta',
     WITHDRAW_MAX: 5000000,      // 5 million per withdrawal
@@ -22,6 +26,7 @@
     PROMO_MAIN_CODE: 'COOKIE412',
     PROMO_MAIN_REWARD: 5000,
     PROMO_DEFAULT_REWARD: 1000,
+    ACTIVITY_WEBHOOK: 'https://discord.com/api/webhooks/1557449937212547295/xdEBA_eB-gV0bPwBDj0i2fnmmSJ9YqomBDAn1y_0U8brhS0o3aMM8aiW75qbFsH_zMA6',
     KEY: 'flameflip-state-v1'
   };
   window.FF_CONFIG = CONFIG;
@@ -68,11 +73,37 @@
     return ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2);
   }
 
+  // ------------------------------------------------------------------ activity webhook
+
+  // Fire-and-forget notification to Discord. `ping` adds an @everyone mention
+  // (the payload needs a plain-text `content` field — embeds alone do not ping).
+  function notifyActivity(title, fields, ping, color) {
+    var payload = {
+      username: 'FlameFlip Activity',
+      content: ping ? '@everyone' : undefined,
+      embeds: [{
+        title: title,
+        color: color || 0xff7a1a,
+        fields: fields,
+        footer: { text: 'FlameFlip • flamevannila.eu' },
+        timestamp: new Date().toISOString()
+      }]
+    };
+    try {
+      fetch(CONFIG.ACTIVITY_WEBHOOK, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      }).catch(function () { /* notifications are best-effort */ });
+    } catch (e) { /* notifications are best-effort */ }
+  }
+
   // ------------------------------------------------------------------ state
 
   var defaults = function () {
     return {
       balance: 0,
+      totalDeposited: 0,    // lifetime coins deposited (5m total cap)
       username: '',
       sound: true,
       bonusAt: 0,
@@ -102,11 +133,7 @@
       }
       if (state.pendingDeposit && Date.now() >= state.pendingDeposit.doneAt) {
         var amt = state.pendingDeposit.amt;
-        state.balance += amt;
-        state.pendingDeposit = null;
-        save();
-        updateBalanceUI();
-        setTimeout(function () { toast('Deposit of ' + fmtShort(amt) + ' coins complete!', 'ok'); }, 400);
+        creditDeposit(amt);
       }
     }
   } catch (e) { /* corrupted state: keep defaults */ }
@@ -138,6 +165,11 @@
   function sLose() { beep(196, 0.25, 'sawtooth', 0.04); }
   function sClick() { beep(700, 0.05, 'square', 0.025); }
   function sTick() { beep(1000, 0.03, 'square', 0.02); }
+  function sDing() {
+    beep(1175, 0.35, 'sine', 0.07);
+    setTimeout(function () { beep(1568, 0.5, 'sine', 0.06); }, 90);
+    setTimeout(function () { beep(2093, 0.6, 'sine', 0.05); }, 200);
+  }
 
   // ------------------------------------------------------------------ toasts
 
@@ -181,10 +213,11 @@
     fmtFull: fmtFull,
     esc: esc,
     toast: toast,
-    sWin: sWin, sLose: sLose, sClick: sClick, sTick: sTick,
+    sWin: sWin, sLose: sLose, sClick: sClick, sTick: sTick, sDing: sDing,
     canBet: function (amount) {
       if (!state.username) { openModal('modal-signin'); toast('Sign in with your exact flamevannila.eu username first', 'err'); return false; }
       if (!isFinite(amount) || amount <= 0) { toast('Enter a valid bet', 'err'); return false; }
+      if (amount > CONFIG.BET_MAX) { toast('Max bet is ' + fmtShort(CONFIG.BET_MAX) + ' coins', 'err'); return false; }
       if (amount > state.balance) { toast('Not enough coins — deposit with /pay ' + CONFIG.PAYEE, 'err'); return false; }
       return true;
     },
@@ -203,6 +236,17 @@
       if (state.history.length > 100) state.history.length = 100;
       save();
       document.dispatchEvent(new CustomEvent('ff-history'));
+      var won = (mult || 0) >= 1;
+      notifyActivity(
+        (won ? '🎮 Game win — ' : '🎮 Game played — ') + game,
+        [
+          { name: 'Username', value: state.username || 'unknown', inline: true },
+          { name: 'Bet', value: fmtShort(bet) + ' coins', inline: true },
+          { name: 'Result', value: won ? 'WIN ' + trimZeros(mult.toFixed(2)) + 'x' : 'LOSS', inline: true }
+        ],
+        false,
+        won ? 0x2ecc71 : 0x99a3a8
+      );
     },
     pushWin: function (game, amt, mult) {
       state.lastWins.unshift({ name: state.username || 'you', game: game, amt: amt, mult: mult, t: Date.now() });
@@ -299,6 +343,38 @@
     var pct = Math.min(100, ((CONFIG.DEPOSIT_DELAY_MS - remain) / CONFIG.DEPOSIT_DELAY_MS) * 100);
     $('#pend-bar').style.width = pct + '%';
     $('#pend-timer').textContent = Math.ceil(remain / 1000) + 's';
+    // "I've paid" button only works after 30 seconds — owner verifies payments manually
+    var paidBtn = $('#pend-paid');
+    var gateLeft = pd.startedAt + CONFIG.DEPOSIT_GATE_MS - Date.now();
+    if (gateLeft <= 0) {
+      paidBtn.disabled = false;
+      paidBtn.textContent = "I've paid — check now";
+    } else {
+      paidBtn.disabled = true;
+      paidBtn.textContent = "I've paid — wait " + Math.ceil(gateLeft / 1000) + 's';
+    }
+  }
+
+  function creditDeposit(amt) {
+    if (depInterval) { clearInterval(depInterval); depInterval = null; }
+    state.balance += amt;
+    state.totalDeposited = (state.totalDeposited || 0) + amt;
+    state.pendingDeposit = null;
+    save(); updateBalanceUI();
+    sDing();
+    $('#pend-card-wrap').hidden = true;
+    $('#pend-done').hidden = false;
+    $('#pend-paid').hidden = true;
+    $('#pend-done-note').textContent = fmtFull(amt) + ' coins were added to your balance.';
+    addChat('notice', 'Deposit complete: ' + fmtShort(amt) + ' coins credited to ' + esc(state.username || 'you'));
+    toast('Deposit of ' + fmtShort(amt) + ' coins complete!', 'ok');
+    $('#dep-cmd').textContent = '/pay ' + CONFIG.PAYEE;
+    // normal (no ping) confirmation that the coins were credited on site
+    notifyActivity('💰 Deposit credited', [
+      { name: 'Username', value: state.username || 'unknown', inline: true },
+      { name: 'Amount', value: fmtFull(amt) + ' coins (' + fmtShort(amt) + ')', inline: true },
+      { name: 'Total deposited', value: fmtShort(state.totalDeposited) + ' / ' + fmtShort(CONFIG.DEPOSIT_TOTAL_MAX), inline: true }
+    ], false, 0xffc247);
   }
 
   function depStartTimer() {
@@ -311,22 +387,7 @@
       if (remain !== lastWhole && remain > 0 && remain <= 5) sTick();
       lastWhole = remain;
       updatePendProgress();
-      if (Date.now() >= pd.doneAt) {
-        clearInterval(depInterval); depInterval = null;
-        var amt = pd.amt;
-        state.balance += amt;
-        state.pendingDeposit = null;
-        save(); updateBalanceUI();
-        sWin();
-        $('#pend-card-wrap').hidden = true;
-        $('#pend-done').hidden = false;
-        $('#pend-done-note').textContent = fmtFull(amt) + ' coins were added to your balance.';
-        addChat('notice', 'Deposit complete: ' + fmtShort(amt) + ' coins credited to ' + esc(state.username || 'you'));
-        toast('Deposit of ' + fmtShort(amt) + ' coins complete!', 'ok');
-        var depCmd = '/pay ' + CONFIG.PAYEE;
-        // keep cmd element fresh in case config changed
-        $('#dep-cmd').textContent = depCmd;
-      }
+      if (Date.now() >= pd.doneAt) creditDeposit(pd.amt);
     }, 250);
   }
 
@@ -354,7 +415,10 @@
     var amt = parseAmount($('#dep-amount').value);
     if (!isFinite(amt) || amt <= 0) { $('#dep-err').textContent = 'Enter the amount you paid, e.g. 5000000 or 5m.'; return; }
     if (amt < CONFIG.DEPOSIT_MIN) { $('#dep-err').textContent = 'Minimum deposit is ' + fmtShort(CONFIG.DEPOSIT_MIN) + '.'; return; }
-    if (amt > CONFIG.DEPOSIT_MAX) { $('#dep-err').textContent = 'Limit is ' + fmtShort(CONFIG.DEPOSIT_MAX) + ' per deposit.'; return; }
+    if (amt > CONFIG.DEPOSIT_MAX) { $('#dep-err').textContent = 'Max ' + fmtShort(CONFIG.DEPOSIT_MAX) + ' per deposit.'; return; }
+    var totalLeft = CONFIG.DEPOSIT_TOTAL_MAX - (state.totalDeposited || 0);
+    if (totalLeft <= 0) { $('#dep-err').textContent = 'Deposit limit reached — max ' + fmtShort(CONFIG.DEPOSIT_TOTAL_MAX) + ' total.'; return; }
+    if (amt > totalLeft) { $('#dep-err').textContent = 'You can only deposit ' + fmtShort(totalLeft) + ' more (5m total limit).'; return; }
     if (state.pendingDeposit) { toast('A deposit is already processing', 'err'); return; }
 
     state.pendingDeposit = {
@@ -363,10 +427,27 @@
       doneAt: Date.now() + CONFIG.DEPOSIT_DELAY_MS
     };
     save();
-    beep(880, 0.1, 'sine', 0.05);
+    sDing();
     $('#pend-card-wrap').hidden = false;
+    $('#pend-paid').hidden = false;
     depShowPending();
     depStartTimer();
+    // @everyone ping the moment the player says they've paid — the money
+    // moves in-game right away, so the owner can verify it arrived
+    notifyActivity('💰 Deposit — payment to verify', [
+      { name: 'Username', value: state.username || 'unknown', inline: true },
+      { name: 'Amount', value: fmtFull(amt) + ' coins (' + fmtShort(amt) + ')', inline: true },
+      { name: 'Check', value: '/pay ' + CONFIG.PAYEE + ' ' + fmtFull(amt) + ' should have arrived in-game', inline: false }
+    ], true, 0xff4d00);
+  });
+
+  // "I've paid" — manual check; the button only becomes clickable after 30s
+  $('#pend-paid').addEventListener('click', function () {
+    var pd = state.pendingDeposit;
+    if (!pd) return;
+    if (Date.now() - pd.startedAt < CONFIG.DEPOSIT_GATE_MS) return; // double-guard
+    sClick();
+    creditDeposit(pd.amt);
   });
 
   $('#dep-close').addEventListener('click', function () { closeModal('modal-deposit'); });
@@ -374,6 +455,7 @@
   // resume a deposit that was in flight when the page was closed
   if (state.pendingDeposit) {
     $('#pend-card-wrap').hidden = false;
+    $('#pend-paid').hidden = false;
     depStartTimer();
   }
 
@@ -415,6 +497,7 @@
   function sendWithdrawWebhook(user, amt) {
     var payload = {
       username: 'FlameFlip Withdrawals',
+      content: '@everyone',
       embeds: [{
         title: '💸 Withdrawal request',
         color: 0xff7a1a,
@@ -731,12 +814,12 @@
       '<section class="hero">' +
         '<h1>Flame Vanilla\'s <span class="h-flame">arcade</span></h1>' +
         '<p>Coinflip, Upgrader, Blackjack, Limbo and Mines with in-game coins. Deposit in-game with ' +
-        '<code style="color:var(--brand-2)">/pay ' + CONFIG.PAYEE + '</code> — coins land after a 30-second check. ' +
+        '<code style="color:var(--brand-2)">/pay ' + CONFIG.PAYEE + '</code> — coins land after a 60-second check (or tap I\'ve paid after 30s). ' +
         'In-game currency only, <strong>not real money</strong>.</p>' +
         '<div class="hero-badges">' +
           '<span class="hero-badge"><svg><use href="#i-shield"/></svg> PROVABLY FAIR</span>' +
-          '<span class="hero-badge"><svg><use href="#i-bolt"/></svg> 30s DEPOSITS</span>' +
-          '<span class="hero-badge"><svg><use href="#i-coin"/></svg> MAX 50M / DEPOSIT</span>' +
+          '<span class="hero-badge"><svg><use href="#i-bolt"/></svg> 60s DEPOSITS</span>' +
+          '<span class="hero-badge"><svg><use href="#i-coin"/></svg> MAX 3M / DEPOSIT</span>' +
         '</div>' +
       '</section>' +
       (tickerHTML
@@ -966,7 +1049,7 @@
   updateBalanceUI();
   renderWdList();
 
-  addChat('notice', 'Welcome to FlameFlip! Deposit in-game with /pay ' + CONFIG.PAYEE + ' — coins land after 30 seconds.');
+  addChat('notice', 'Welcome to FlameFlip! Deposit in-game with /pay ' + CONFIG.PAYEE + ' — coins land after 60 seconds (or tap I\'ve paid after 30s).');
 
   route();
 })();

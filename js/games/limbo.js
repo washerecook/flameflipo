@@ -29,8 +29,8 @@
             '<button class="btn-ghost" id="lb-min">Min</button>' +
           '</div>' +
 
-          '<div class="side-label">Target multiplier</div>' +
-          '<div class="up-multi" id="lb-mult">2.00×</div>' +
+          '<div class="side-label">Target multiplier — type it in, e.g. 2x, 4x, 6x</div>' +
+          '<div class="target-row"><input type="text" id="lb-target" class="tinput" inputmode="decimal" value="2" aria-label="Target multiplier"><span class="target-x">×</span></div>' +
           '<div class="range-row"><input type="range" id="lb-range" min="101" max="100000000" value="200">' +
           '<div class="range-nums"><span>1.01×</span><span>1,000,000×</span></div></div>' +
           '<div class="up-stat"><span>Win chance</span><b id="lb-chance">48.00%</b></div>' +
@@ -49,6 +49,7 @@
 
       var betInput = document.getElementById('lb-bet');
       var range = document.getElementById('lb-range');
+      var targetInput = document.getElementById('lb-target');
       var rolledEl = document.getElementById('lb-rolled');
 
       function target() { return Math.max(MIN_T, Math.min(MAX_T, parseInt(range.value, 10) / 100)); }
@@ -61,16 +62,34 @@
       function refresh() {
         var t = target();
         var chance = 0.96 / t;
-        document.getElementById('lb-mult').textContent = fmtMult(t) + '×';
         document.getElementById('lb-chance').textContent = chance >= 1 ? '100%' : (chance * 100).toFixed(2) + '%';
         var bet = parseBet(betInput.value);
         document.getElementById('lb-payout').textContent = isFinite(bet) && bet > 0
           ? UI.fmtShort(Math.floor(bet * t)) + ' coins'
           : '—';
+ }
+
+      // accepts "2", "2x", "2.5x", "1000x"…
+      function parseTarget(str) {
+        str = String(str || '').toLowerCase().trim().replace(/x\s*$/, '').replace(/[,\s_]/g, '');
+        var v = parseFloat(str);
+        if (!isFinite(v) || v <= 0) return NaN;
+        return v;
       }
 
       range.addEventListener('input', refresh);
       betInput.addEventListener('input', refresh);
+      targetInput.addEventListener('input', function () {
+        var v = parseTarget(targetInput.value);
+        if (isFinite(v)) setTarget(v);
+      });
+      targetInput.addEventListener('blur', function () {
+        targetInput.value = fmtMult(target());
+      });
+      targetInput.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') targetInput.blur();
+      });
+      range.addEventListener('change', function () { targetInput.value = fmtMult(target()); });
 
       document.getElementById('lb-half').addEventListener('click', function () {
         var v = parseBet(betInput.value) || Math.floor(window.FF_balance() / 2);
@@ -83,16 +102,6 @@
       document.getElementById('lb-min').addEventListener('click', function () { betInput.value = '1'; });
       document.getElementById('lb-max').addEventListener('click', function () {
         betInput.value = String(Math.floor(window.FF_balance()));
-      });
-
-      // preset target chips via click on the multiplier readout
-      var presets = [1.5, 2, 5, 10, 100, 1000];
-      var pIdx = 0;
-      document.getElementById('lb-mult').style.cursor = 'pointer';
-      document.getElementById('lb-mult').title = 'Click to cycle presets: 1.5×, 2×, 5×, 10×, 100×, 1000×';
-      document.getElementById('lb-mult').addEventListener('click', function () {
-        pIdx = (pIdx + 1) % presets.length;
-        setTarget(presets[pIdx]);
       });
 
       renderHistory();

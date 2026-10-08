@@ -44,17 +44,23 @@ account — you cannot send someone else's coins to another username.
 1. Join `flamevannila.eu`.
 2. **Pay `washerecookie` the amount you want** with `/pay washerecookie <amount>`
    (the deposit modal copies the command for you).
-3. Type the amount you paid (min 1,000 / max **50,000,000** per deposit) and click
-   **I've paid**.
-4. A **30-second** verification countdown runs, then the coins are credited.
+3. Type the amount you paid (min 1,000 / max **3,000,000 (3m) per deposit**,
+   **5,000,000 (5m) total per player**) and click **I've paid**.
+4. A **60-second** verification countdown runs, then the coins are credited — or tap
+   **I've paid — check now**, which unlocks **30 seconds** in, to credit instantly
+   (the owner verifies payments manually).
+5. A **ding** plays the moment the player clicks **I've paid**, and an
+   **@everyone-pinged Discord notification with the player's username, amount and the
+   exact /pay command** is sent immediately — so the owner can verify the money arrived
+   in-game. A second (no-ping) message confirms when the coins are credited on site.
 
 Pending deposits survive a page refresh — the countdown resumes where it left off.
 
 ## Withdrawals (site → in-game)
 
 In the Withdraw modal your signed-in username and the amount are POSTed as a formatted
-request (user, amount, ETA, balance) to a **Discord webhook**, where staff pay you
-in-game. Rules:
+request (user, amount, ETA, balance) to a **Discord webhook** with an **@everyone ping**,
+where staff pay you in-game. Rules:
 
 - **Max 5,000,000 (5m) per withdrawal.**
 - Coins **arrive within 10–30 minutes** of the request.
@@ -65,6 +71,26 @@ in-game. Rules:
 > If you get spam, delete/recreate the webhooks in your Discord channel settings and
 > paste the new URLs into the config. For stronger protection, proxy them through a
 > tiny server (or a Cloudflare Worker) instead.
+
+## Activity notifications (webhooks)
+
+Every action a player takes is POSTed to Discord **with their username**:
+
+- **Deposit submitted ("I've paid")** → @everyone ping (username, amount, /pay command
+  to verify) — this is the "go check the money arrived" alert.
+- **Deposit credited on site** → normal message (no ping).
+- **Withdrawal request** → @everyone ping on the withdrawals webhook.
+- **Every game round** (Coinflip, Upgrader, Blackjack, Limbo, Mines) → normal message
+  (no ping) with username, game, bet and WIN/LOSS result.
+- **Promo code redeemed** → normal message with username, code and reward.
+
+All activity notifications go to `ACTIVITY_WEBHOOK` (same channel as promos); withdrawals
+keep their own webhook. Notifications are fire-and-forget, so they never block gameplay.
+
+## Bet limits
+
+**Max bet is 5,000,000 (5m) coins in every game** — enforced centrally in
+`FFUI.canBet` before any game takes the wager.
 
 ## Promo codes
 
@@ -112,9 +138,12 @@ PROMO_MAIN_CODE: 'COOKIE412',  // main promo code
 PROMO_MAIN_REWARD: 5000,       // reward for the main code
 PROMO_DEFAULT_REWARD: 1000,    // reward for any other code
 WITHDRAW_MAX: 5000000,         // 5m cap per withdrawal
+BET_MAX: 5000000,              // 5m max bet in every game
 DEPOSIT_MIN: 1000,
-DEPOSIT_MAX: 50000000,         // 50m cap per deposit
-DEPOSIT_DELAY_MS: 30000,       // 30s credit delay
+DEPOSIT_MAX: 3000000,          // 3m cap per deposit
+DEPOSIT_TOTAL_MAX: 5000000,    // 5m cap total per player
+DEPOSIT_DELAY_MS: 60000,       // 60s auto-credit delay
+DEPOSIT_GATE_MS: 30000,        // "I've paid — check now" unlocks after 30s
 BONUS_COOLDOWN_MS: 20 * 60 * 60 * 1000,
 KEY: 'flameflip-state-v1'      // localStorage key — bump to wipe all saves
 ```

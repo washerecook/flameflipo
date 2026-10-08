@@ -971,3 +971,137 @@ input[type="range"] { width: 100%; accent-color: var(--brand); cursor: pointer; 
   .hero { padding: 24px 18px; }
   .modal { padding: 18px; }
 }
+
+/* ============================================================
+   Typed multiplier input (Upgrader + Limbo)
+   ============================================================ */
+.target-row { display: flex; align-items: center; gap: 8px; margin-top: 2px; }
+.tinput {
+  flex: 1; min-width: 0;
+  background: var(--bg-darker);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--brand-2);
+  font-size: 30px;
+  font-weight: 800;
+  line-height: 1.15;
+  padding: 8px 12px;
+  font-variant-numeric: tabular-nums;
+  outline: none;
+  transition: border-color .18s ease, box-shadow .18s ease, transform .18s ease;
+}
+.tinput:focus {
+  border-color: var(--brand);
+  box-shadow: 0 0 0 3px rgba(255, 122, 26, .18);
+  transform: translateY(-1px);
+}
+.target-x { font-size: 26px; font-weight: 800; color: var(--text-faint); user-select: none; }
+
+/* disabled buttons (deposit "check now" gate, busy submit) */
+.btn-brand:disabled, .btn-ghost:disabled {
+  opacity: .45;
+  cursor: not-allowed;
+  filter: saturate(.35);
+  transform: none !important;
+}
+
+/* ============================================================
+   Animation polish pass — very very clean
+   ============================================================ */
+
+/* shared easing */
+:root { --ease-pop: cubic-bezier(0.34, 1.56, 0.64, 1); }
+
+/* chips: soft lift + press */
+.chip { transition: transform .16s var(--ease-pop), background .16s ease, border-color .16s ease, color .16s ease; }
+.chip:hover { transform: translateY(-2px); border-color: var(--brand); }
+.chip:active { transform: translateY(0) scale(.94); }
+
+/* brand buttons: gradient shift + shine sweep on hover */
+.btn-brand { position: relative; overflow: hidden; transition: transform .16s var(--ease-pop), box-shadow .2s ease, filter .2s ease; }
+.btn-brand::after {
+  content: '';
+  position: absolute; top: 0; left: -80%; width: 60%; height: 100%;
+  background: linear-gradient(105deg, transparent, rgba(255,255,255,.22), transparent);
+  transform: skewX(-18deg);
+  transition: left .45s ease;
+  pointer-events: none;
+}
+.btn-brand:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 8px 22px rgba(255, 122, 26, .28); }
+.btn-brand:hover:not(:disabled)::after { left: 130%; }
+.btn-brand:active:not(:disabled) { transform: translateY(0) scale(.97); }
+
+/* game cards: fade-up entrance + hover lift & glow */
+@keyframes cardIn { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: none; } }
+.game-card, .stat-card {
+  animation: cardIn .5s var(--ease-pop) both;
+  transition: transform .22s var(--ease-pop), box-shadow .22s ease, border-color .22s ease;
+}
+.game-card:nth-child(2) { animation-delay: .05s; }
+.game-card:nth-child(3) { animation-delay: .1s; }
+.game-card:nth-child(4) { animation-delay: .15s; }
+.game-card:nth-child(5) { animation-delay: .2s; }
+.game-card:hover {
+  transform: translateY(-5px);
+  border-color: var(--brand);
+  box-shadow: 0 14px 30px rgba(0, 0, 0, .35), 0 0 0 1px rgba(255, 122, 26, .25), 0 0 26px rgba(255, 122, 26, .12);
+}
+.game-card:hover .gc-icon { transform: scale(1.12) rotate(-4deg); }
+.gc-icon { transition: transform .25s var(--ease-pop); }
+.stat-card:hover { transform: translateY(-2px); border-color: var(--border); }
+
+/* bet card glows when you're typing in it */
+.bet-card { transition: box-shadow .25s ease, border-color .25s ease; }
+.bet-card:focus-within {
+  border-color: var(--brand);
+  box-shadow: 0 0 0 1px rgba(255, 122, 26, .3), 0 0 22px rgba(255, 122, 26, .08);
+}
+
+/* toasts: slide-in from the right */
+@keyframes toastIn { from { opacity: 0; transform: translateX(24px) scale(.95); } to { opacity: 1; transform: none; } }
+.toast { animation: toastIn .3s var(--ease-pop) both; }
+
+/* limbo result pop */
+@keyframes limboPop {
+  0% { transform: scale(.7); opacity: 0; }
+  60% { transform: scale(1.08); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+.limbo-big.w { color: var(--green); animation: limboPop .45s var(--ease-pop) both; text-shadow: 0 0 30px rgba(46, 204, 113, .4); }
+.limbo-big.l { color: #ff5f52; animation: limboPop .45s var(--ease-pop) both; text-shadow: 0 0 30px rgba(255, 95, 82, .35); }
+.limbo-big.rolling { color: var(--brand-2); }
+
+/* gauge glows while the needle is spinning */
+.gauge.rolling .gauge-arc-win { filter: drop-shadow(0 0 8px rgba(255, 194, 71, .55)); }
+.gauge.rolling .gauge-needle path { fill: var(--brand-2); }
+
+/* up-roll result slide */
+@keyframes rollIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+.up-roll.w, .up-roll.l { animation: rollIn .35s ease both; }
+.up-roll.w { color: var(--green); }
+.up-roll.l { color: #ff5f52; }
+
+/* deposit pending: pulsing clock + bar shine + check pop */
+@keyframes pendPulse { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.07); opacity: .8; } }
+.pend-spin { animation: spin 1.6s linear infinite; }
+.pend-card .pend-spin { filter: drop-shadow(0 0 10px rgba(255, 122, 26, .45)); }
+.pend-bar { position: relative; overflow: hidden; }
+.pend-bar-fill { transition: width .3s linear; }
+.pend-bar-fill::after {
+  content: '';
+  position: absolute; inset: 0;
+  background: linear-gradient(105deg, transparent, rgba(255,255,255,.35), transparent);
+  animation: barShine 1.4s ease infinite;
+}
+@keyframes barShine { from { transform: translateX(-100%); } to { transform: translateX(100%); } }
+@keyframes checkPop { 0% { transform: scale(0); opacity: 0; } 70% { transform: scale(1.2); opacity: 1; } 100% { transform: scale(1); opacity: 1; } }
+.pend-check { animation: checkPop .5s var(--ease-pop) both; filter: drop-shadow(0 0 14px rgba(46, 204, 113, .5)); }
+
+/* modals: smooth rise-in */
+@keyframes modalRise { from { opacity: 0; transform: translateY(18px) scale(.97); } to { opacity: 1; transform: none; } }
+.modal { animation: modalRise .28s var(--ease-pop) both; }
+
+/* nav & hero touches */
+.hero h1 { animation: cardIn .55s var(--ease-pop) both; }
+.hero-badges .hero-badge { transition: transform .18s var(--ease-pop), border-color .18s ease; }
+.hero-badges .hero-badge:hover { transform: translateY(-2px); border-color: var(--brand); }

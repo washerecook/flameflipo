@@ -36,8 +36,8 @@
             '<button class="btn-ghost" id="up-min">Min</button>' +
           '</div>' +
 
-          '<div class="side-label">Target multiplier</div>' +
-          '<div class="up-multi" id="up-mult">2.00×</div>' +
+          '<div class="side-label">Target multiplier — type it in, e.g. 2x, 4x, 6x</div>' +
+          '<div class="target-row"><input type="text" id="up-target" class="tinput" inputmode="decimal" value="2" aria-label="Target multiplier"><span class="target-x">×</span></div>' +
           '<div class="up-chips" id="up-chips">' +
             '<button class="chip" data-t="1.5">1.5×</button>' +
             '<button class="chip" data-t="2">2×</button>' +
@@ -70,6 +70,7 @@
 
       var betInput = document.getElementById('up-bet');
       var range = document.getElementById('up-range');
+      var targetInput = document.getElementById('up-target');
       var arc = document.getElementById('up-arc');
       var needle = document.getElementById('up-needle');
       var rollEl = document.getElementById('up-roll');
@@ -86,6 +87,14 @@
         refresh();
       }
 
+      // accepts "2", "2x", "2.5x", "1,000x"…
+      function parseTarget(str) {
+        str = String(str || '').toLowerCase().trim().replace(/x\s*$/, '').replace(/[,\s_]/g, '');
+        var v = parseFloat(str);
+        if (!isFinite(v) || v <= 0) return NaN;
+        return v;
+      }
+
       function refresh() {
         var t = target();
         var chance = Math.min(1, 0.96 / t);
@@ -93,7 +102,6 @@
         // left end. SVG dashoffset is measured from the path start (left end).
         arc.style.strokeDasharray = ARC_LEN + ' ' + ARC_LEN;
         arc.style.strokeDashoffset = String(ARC_LEN * (1 - chance));
-        document.getElementById('up-mult').textContent = trim2(t) + '×';
         document.getElementById('up-chance').textContent = (chance * 100).toFixed(2) + '%';
         var bet = parseBet(betInput.value);
         document.getElementById('up-payout').textContent = isFinite(bet) && bet > 0
@@ -114,11 +122,23 @@
         needle.style.transition = '';
         needle.style.transform = 'rotate(' + finalAngle + 'deg)';
         needle.setAttribute('data-angle', String(finalAngle));
-        setTimeout(done, 1250);
+        var gaugeEl = needle.closest('.gauge');
+        if (gaugeEl) gaugeEl.classList.add('rolling');
+        setTimeout(function () { if (gaugeEl) gaugeEl.classList.remove('rolling'); done(); }, 1250);
       }
 
       range.addEventListener('input', refresh);
       betInput.addEventListener('input', refresh);
+      targetInput.addEventListener('input', function () {
+        var v = parseTarget(targetInput.value);
+        if (isFinite(v)) setTarget(v);
+      });
+      targetInput.addEventListener('blur', function () {
+        targetInput.value = trim2(target());
+      });
+      targetInput.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') targetInput.blur();
+      });
 
       document.getElementById('up-half').addEventListener('click', function () {
         var v = parseBet(betInput.value) || Math.floor(window.FF_balance() / 2);
@@ -138,8 +158,12 @@
       });
 
       document.querySelectorAll('#up-chips .chip').forEach(function (c) {
-        c.addEventListener('click', function () { setTarget(parseFloat(c.getAttribute('data-t'))); });
+        c.addEventListener('click', function () {
+          setTarget(parseFloat(c.getAttribute('data-t')));
+          targetInput.value = trim2(target());
+        });
       });
+      range.addEventListener('change', function () { targetInput.value = trim2(target()); });
 
       var busy = false;
       document.getElementById('up-play').addEventListener('click', function () {
