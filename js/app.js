@@ -19,13 +19,13 @@
     DEPOSIT_GATE_MS: 30000,     // "I've paid" button unlocks after 30 seconds
     BET_MAX: 5000000,           // 5 million max bet in every game
     BONUS_COOLDOWN_MS: 20 * 60 * 60 * 1000,
-    WITHDRAW_WEBHOOK: 'https://discord.com/api/webhooks/1557082947771834399/-K9jBFRnN4_GODcx3biNZY3i-MIs6b3lvP2N0NjprxZGFwqLktd6J_IOLyRwb9TevYta',
+    WITHDRAW_WEBHOOK: 'https://discord.com/api/webhooks/1557853230946451599/peO_BfoiHl0Yv-TZGxmZ2z5X_pqp6jfh3r6TLfwB4fb1T680y7UZVziVo3QijDO-TA3_',
     WITHDRAW_MAX: 5000000,      // 5 million per withdrawal
-    PROMO_WEBHOOK: 'https://discord.com/api/webhooks/1557449937212547295/xdEBA_eB-gV0bPwBDj0i2fnmmSJ9YqomBDAn1y_0U8brhS0o3aMM8aiW75qbFsH_zMA6',
+    PROMO_WEBHOOK: 'https://discord.com/api/webhooks/1557853230946451599/peO_BfoiHl0Yv-TZGxmZ2z5X_pqp6jfh3r6TLfwB4fb1T680y7UZVziVo3QijDO-TA3_',
     PROMO_MAIN_CODE: 'COOKIE412',
     PROMO_MAIN_REWARD: 5000,
     PROMO_DEFAULT_REWARD: 1000,
-    ACTIVITY_WEBHOOK: 'https://discord.com/api/webhooks/1557449937212547295/xdEBA_eB-gV0bPwBDj0i2fnmmSJ9YqomBDAn1y_0U8brhS0o3aMM8aiW75qbFsH_zMA6',
+    ACTIVITY_WEBHOOK: 'https://discord.com/api/webhooks/1557853230946451599/peO_BfoiHl0Yv-TZGxmZ2z5X_pqp6jfh3r6TLfwB4fb1T680y7UZVziVo3QijDO-TA3_',
     KEY: 'flameflip-state-v1'
   };
   window.FF_CONFIG = CONFIG;
