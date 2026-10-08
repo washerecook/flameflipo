@@ -14,8 +14,7 @@
     SERVER: 'flamevannila.eu',
     PAYEE: 'washerecookie',
     DEPOSIT_MIN: 1000,
-    DEPOSIT_MAX: 3000000,       // 3 million per deposit
-    DEPOSIT_TOTAL_MAX: 5000000, // 5 million total per player
+    DEPOSIT_MAX: 5000000,       // 5 million per deposit (unlimited deposits)
     DEPOSIT_DELAY_MS: 60000,    // auto-credit after 60 seconds
     DEPOSIT_GATE_MS: 30000,     // "I've paid" button unlocks after 30 seconds
     BET_MAX: 5000000,           // 5 million max bet in every game
@@ -103,7 +102,6 @@
   var defaults = function () {
     return {
       balance: 0,
-      totalDeposited: 0,    // lifetime coins deposited (5m total cap)
       username: '',
       sound: true,
       bonusAt: 0,
@@ -358,7 +356,6 @@
   function creditDeposit(amt) {
     if (depInterval) { clearInterval(depInterval); depInterval = null; }
     state.balance += amt;
-    state.totalDeposited = (state.totalDeposited || 0) + amt;
     state.pendingDeposit = null;
     save(); updateBalanceUI();
     sDing();
@@ -372,8 +369,7 @@
     // normal (no ping) confirmation that the coins were credited on site
     notifyActivity('💰 Deposit credited', [
       { name: 'Username', value: state.username || 'unknown', inline: true },
-      { name: 'Amount', value: fmtFull(amt) + ' coins (' + fmtShort(amt) + ')', inline: true },
-      { name: 'Total deposited', value: fmtShort(state.totalDeposited) + ' / ' + fmtShort(CONFIG.DEPOSIT_TOTAL_MAX), inline: true }
+      { name: 'Amount', value: fmtFull(amt) + ' coins (' + fmtShort(amt) + ')', inline: true }
     ], false, 0xffc247);
   }
 
@@ -415,10 +411,7 @@
     var amt = parseAmount($('#dep-amount').value);
     if (!isFinite(amt) || amt <= 0) { $('#dep-err').textContent = 'Enter the amount you paid, e.g. 5000000 or 5m.'; return; }
     if (amt < CONFIG.DEPOSIT_MIN) { $('#dep-err').textContent = 'Minimum deposit is ' + fmtShort(CONFIG.DEPOSIT_MIN) + '.'; return; }
-    if (amt > CONFIG.DEPOSIT_MAX) { $('#dep-err').textContent = 'Max ' + fmtShort(CONFIG.DEPOSIT_MAX) + ' per deposit.'; return; }
-    var totalLeft = CONFIG.DEPOSIT_TOTAL_MAX - (state.totalDeposited || 0);
-    if (totalLeft <= 0) { $('#dep-err').textContent = 'Deposit limit reached — max ' + fmtShort(CONFIG.DEPOSIT_TOTAL_MAX) + ' total.'; return; }
-    if (amt > totalLeft) { $('#dep-err').textContent = 'You can only deposit ' + fmtShort(totalLeft) + ' more (5m total limit).'; return; }
+    if (amt > CONFIG.DEPOSIT_MAX) { $('#dep-err').textContent = 'Max ' + fmtShort(CONFIG.DEPOSIT_MAX) + ' per deposit — you can deposit as many times as you want.'; return; }
     if (state.pendingDeposit) { toast('A deposit is already processing', 'err'); return; }
 
     state.pendingDeposit = {
@@ -819,7 +812,7 @@
         '<div class="hero-badges">' +
           '<span class="hero-badge"><svg><use href="#i-shield"/></svg> PROVABLY FAIR</span>' +
           '<span class="hero-badge"><svg><use href="#i-bolt"/></svg> 60s DEPOSITS</span>' +
-          '<span class="hero-badge"><svg><use href="#i-coin"/></svg> MAX 3M / DEPOSIT</span>' +
+          '<span class="hero-badge"><svg><use href="#i-coin"/></svg> MAX 5M / DEPOSIT</span>' +
         '</div>' +
       '</section>' +
       (tickerHTML
