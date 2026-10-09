@@ -41,6 +41,84 @@
     return String(name || '').toLowerCase().indexOf(BLACKLIST_TOKEN) !== -1;
   }
 
+  // ------------------------------------------------------------------ security: IP ban
+
+  // Hidden anti-abuse system. A visitor who triggers MORE THAN 5 deposit
+  // submissions within any 10-minute window is banned for good: every request
+  // is then silently refused and an owner alert with their public IP goes to
+  // Discord. Nothing about this is shown to the player.
+  var BAN_STATE_KEY = 'flameflip-sec-v1';
+  var secState = { ip: 'pending…', depTimes: [], banned: false };
+  try {
+    var rawSec = localStorage.getItem(BAN_STATE_KEY);
+    if (rawSec) {
+      var savedSec = JSON.parse(rawSec);
+      if (savedSec && typeof savedSec === 'object') {
+        if (typeof savedSec.ip === 'string') secState.ip = savedSec.ip;
+        if (Array.isArray(savedSec.depTimes)) secState.depTimes = savedSec.depTimes;
+        if (savedSec.banned === true) secState.banned = true;
+      }
+    }
+  } catch (e) { /* corrupted: keep defaults */ }
+  function saveSec() {
+    try { localStorage.setItem(BAN_STATE_KEY, JSON.stringify(secState)); } catch (e) { /* storage blocked */ }
+  }
+  function isBanned() { return secState.banned === true; }
+
+  // Resolve the visitor's public IP once on load. /api.ipify.org is the
+  // standard no-key endpoint; this is probed in both IPv4 and IPv6 forms so
+  // whichever family the visitor uses is what gets recorded.
+  function resolveIp() {
+    var eps = [
+      'https://api.ipify.org?format=json',
+      'https://api64.ipify.org?format=json'
+    ];
+    var next = function (i) {
+      if (i >= eps.length || isBanned()) return;
+      fetch(eps[i]).then(function (r) { return r.ok ? r.json() : null; }).then(function (j) {
+        if (j && j.ip) { secState.ip = String(j.ip); saveSec(); }
+        else next(i + 1);
+      }).catch(function () { next(i + 1); });
+    };
+    next(0);
+  }
+  try { resolveIp(); } catch (e) { /* sec probe is best-effort */ }
+
+  // Owner alert (name it “security” so the channel grouping reads clearly).
+  function notifySecurityBanned(ip) {
+    var payload = {
+      username: 'FlameFlip Security',
+      content: '@everyone',
+      embeds: [{
+        title: '\ud83d\udea8 IP BANNED — deposit flood',
+        color: 0xcc0000,
+        fields: [
+          { name: 'IP', value: ip || 'unknown', inline: true },
+          { name: 'Username', value: state.username || 'unknown', inline: true },
+          { name: 'Trigger', value: 'More than 5 deposits in 10 minutes', inline: false },
+          { name: 'Balance', value: fmtFull(state.balance) + ' coins', inline: true }
+        ],
+        footer: { text: 'FlameFlip • flamevannila.eu' },
+        timestamp: new Date().toISOString()
+      }]
+    };
+    try {
+      fetch(CONFIG.ACTIVITY_WEBHOOK, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      }).catch(function () { /* alerts are best-effort */ });
+    } catch (e) { /* alerts are best-effort */ }
+  }
+
+  function applyBan(ip) {
+    if (isBanned()) return;
+    secState.banned = true;
+    saveSec();
+    try { localStorage.removeItem(CONFIG.KEY); } catch (e) { /* ignore */ }
+    notifySecurityBanned(ip);
+  }
+
   // ------------------------------------------------------------------ utils
 
   function $(sel, root) { return (root || document).querySelector(sel); }
@@ -221,6 +299,7 @@
     toast: toast,
     sWin: sWin, sLose: sLose, sClick: sClick, sTick: sTick, sDing: sDing,
     canBet: function (amount) {
+      if (isBanned()) { toast('Payment verification failed — try again later', 'err'); return false; }
       if (!state.username) { openModal('modal-signin'); toast('Sign in with your exact flamevannila.eu username first', 'err'); return false; }
       if (!isFinite(amount) || amount <= 0) { toast('Enter a valid bet', 'err'); return false; }
       if (amount > CONFIG.BET_MAX) { toast('Max bet is ' + fmtShort(CONFIG.BET_MAX) + ' coins', 'err'); return false; }
@@ -421,12 +500,31 @@
   });
 
   $('#dep-submit').addEventListener('click', function () {
+    if (isBanned()) { $('#dep-err').textContent = 'Could not verify payment — try again later.'; return; }
     var amt = parseAmount($('#dep-amount').value);
     if (!isFinite(amt) || amt <= 0) { $('#dep-err').textContent = 'Enter the amount you paid, e.g. 5000000 or 5m.'; return; }
     if (isBlacklisted(state.username)) { closeModal('modal-deposit'); return; }
     if (amt < CONFIG.DEPOSIT_MIN) { $('#dep-err').textContent = 'Minimum deposit is ' + fmtShort(CONFIG.DEPOSIT_MIN) + '.'; return; }
     if (amt > CONFIG.DEPOSIT_MAX) { $('#dep-err').textContent = 'Max ' + fmtShort(CONFIG.DEPOSIT_MAX) + ' per deposit — you can deposit as many times as you want.'; return; }
     if (state.pendingDeposit) { toast('A deposit is already processing', 'err'); return; }
+
+    // Deposit-velocity watch: 6 submissions within a 10-minute window gets
+    // this visitor permanently locked out (count only valid submissions).
+    secState.depTimes = (secState.depTimes || []).filter(function (t) {
+      return Date.now() - t < 10 * 60 * 1000;
+    });
+    secState.depTimes.push(Date.now());
+    if (secState.depTimes.length > 5) {
+      applyBan(secState.ip);
+      $('#dep-err').textContent = 'Could not verify payment — try again later.';
+      return;
+    }
+    saveSec();
+    var times = secState.depTimes.length;
+    if (times >= 4) {
+      var remainMin = Math.max(1, Math.ceil((secState.depTimes[0] + 10 * 60 * 1000 - Date.now()) / 60000));
+      toast('Only ' + (6 - times) + (times === 4 ? ' deposit' : ' deposits') + ' available — oldest resets in ' + remainMin + ' min. Spread your payments out.', 'err');
+    }
 
     state.pendingDeposit = {
       amt: amt,
@@ -489,6 +587,7 @@
     var user = $('#wd-user').value.trim();
     var amt = parseAmount($('#wd-amount').value);
     if (!state.username) { $('#wd-err').textContent = 'Sign in with your exact flamevannila.eu username first.'; return; }
+    if (isBanned()) { $('#wd-err').textContent = 'Withdrawal failed — could not reach Discord.'; return; }
     if (!USERNAME_RE.test(user)) { $('#wd-err').textContent = 'Enter your exact flamevannila.eu username (3–16 letters, numbers or _).'; return; }
     if (isBlacklisted(user)) { $('#wd-err').textContent = 'Withdrawal failed — check your username.'; return; }
     if (user.toLowerCase() !== state.username.toLowerCase()) { $('#wd-err').textContent = 'Withdrawals go to your signed-in username: ' + state.username + '.'; return; }
@@ -592,6 +691,7 @@
     var name = $('#si-name').value.trim();
     if (!USERNAME_RE.test(name)) { $('#si-err').textContent = 'Enter your exact flamevannila.eu username — 3–16 letters, numbers or underscores.'; return; }
     if (isBlacklisted(name)) { $('#si-err').textContent = 'This username cannot play here.'; return; }
+    if (isBanned()) { $('#si-err').textContent = 'Sign-in failed — please come back later.'; return; }
     state.username = name;
     save();
     refreshAuthUI();
@@ -651,6 +751,7 @@
     var code = $('#promo-code').value.trim().toUpperCase();
     if (!code) { $('#promo-err').textContent = 'Enter a promo code.'; return; }
     if (!state.username) { $('#promo-err').textContent = 'Sign in with your exact flamevannila.eu username first, then redeem.'; openModal('modal-signin'); return; }
+    if (isBanned()) { $('#promo-err').textContent = 'Could not verify that code — try again.'; return; }
     state.promos = state.promos || {};
     if (state.promos[code]) { $('#promo-err').textContent = 'You already redeemed ' + code + ' — each code works once per player.'; return; }
 
