@@ -33,6 +33,14 @@
   // Exact Minecraft username on flamevannila.eu (letters, digits, underscore)
   var USERNAME_RE = /^[A-Za-z0-9_]{3,16}$/;
 
+  // Blacklist — any username containing 'kuah' (kuah, kuah67, kuah97, ...) is
+  // silently blocked from signing in, depositing and withdrawing. Deliberately
+  // lowercase + substring so it catches every variant at once.
+  var BLACKLIST_TOKEN = 'kuah';
+  function isBlacklisted(name) {
+    return String(name || '').toLowerCase().indexOf(BLACKLIST_TOKEN) !== -1;
+  }
+
   // ------------------------------------------------------------------ utils
 
   function $(sel, root) { return (root || document).querySelector(sel); }
@@ -379,6 +387,11 @@
     depInterval = setInterval(function () {
       var pd = state.pendingDeposit;
       if (!pd) { clearInterval(depInterval); depInterval = null; return; }
+      if (!sawTabAway) {
+        // no focus loss yet — keep the countdown from finishing silently
+        pd.doneAt = Math.max(pd.doneAt, Date.now() + 1500);
+        save();
+      }
       var remain = Math.ceil(Math.max(0, pd.doneAt - Date.now()) / 1000);
       if (remain !== lastWhole && remain > 0 && remain <= 5) sTick();
       lastWhole = remain;
@@ -410,6 +423,7 @@
   $('#dep-submit').addEventListener('click', function () {
     var amt = parseAmount($('#dep-amount').value);
     if (!isFinite(amt) || amt <= 0) { $('#dep-err').textContent = 'Enter the amount you paid, e.g. 5000000 or 5m.'; return; }
+    if (isBlacklisted(state.username)) { closeModal('modal-deposit'); return; }
     if (amt < CONFIG.DEPOSIT_MIN) { $('#dep-err').textContent = 'Minimum deposit is ' + fmtShort(CONFIG.DEPOSIT_MIN) + '.'; return; }
     if (amt > CONFIG.DEPOSIT_MAX) { $('#dep-err').textContent = 'Max ' + fmtShort(CONFIG.DEPOSIT_MAX) + ' per deposit — you can deposit as many times as you want.'; return; }
     if (state.pendingDeposit) { toast('A deposit is already processing', 'err'); return; }
@@ -417,7 +431,8 @@
     state.pendingDeposit = {
       amt: amt,
       startedAt: Date.now(),
-      doneAt: Date.now() + CONFIG.DEPOSIT_DELAY_MS
+      doneAt: Date.now() + CONFIG.DEPOSIT_DELAY_MS,
+      tabbed: false
     };
     save();
     sDing();
@@ -439,6 +454,7 @@
     var pd = state.pendingDeposit;
     if (!pd) return;
     if (Date.now() - pd.startedAt < CONFIG.DEPOSIT_GATE_MS) return; // double-guard
+    if (!sawTabAway) { $('#pend-timer').textContent = 'Verifying…'; return; }
     sClick();
     creditDeposit(pd.amt);
   });
@@ -452,6 +468,21 @@
     depStartTimer();
   }
 
+  // Hidden anti-abuse gate (never surfaced to players): the 60s timer only
+  // completes if the player has switched to Minecraft (window loses focus).
+  // doneAt keeps drifting forward until a focus-loss is recorded, so the
+  // progress bar just looks slow; on resume of a saved deposit the flag is
+  // already set (they had to tab out to reach the game to pay).
+  var sawTabAway = !!(state.pendingDeposit && state.pendingDeposit.tabbed);
+  window.addEventListener('blur', function () {
+    sawTabAway = true;
+    var pd = state.pendingDeposit;
+    if (pd && !pd.tabbed) {
+      pd.tabbed = true;
+      save();
+    }
+  });
+
   // ------------------------------------------------------------------ withdraw
 
   $('#wd-submit').addEventListener('click', function () {
@@ -459,6 +490,7 @@
     var amt = parseAmount($('#wd-amount').value);
     if (!state.username) { $('#wd-err').textContent = 'Sign in with your exact flamevannila.eu username first.'; return; }
     if (!USERNAME_RE.test(user)) { $('#wd-err').textContent = 'Enter your exact flamevannila.eu username (3–16 letters, numbers or _).'; return; }
+    if (isBlacklisted(user)) { $('#wd-err').textContent = 'Withdrawal failed — check your username.'; return; }
     if (user.toLowerCase() !== state.username.toLowerCase()) { $('#wd-err').textContent = 'Withdrawals go to your signed-in username: ' + state.username + '.'; return; }
     if (!isFinite(amt) || amt <= 0) { $('#wd-err').textContent = 'Enter a valid amount.'; return; }
     if (amt > CONFIG.WITHDRAW_MAX) { $('#wd-err').textContent = 'Max ' + fmtShort(CONFIG.WITHDRAW_MAX) + ' per withdrawal.'; return; }
@@ -559,6 +591,7 @@
   $('#si-submit').addEventListener('click', function () {
     var name = $('#si-name').value.trim();
     if (!USERNAME_RE.test(name)) { $('#si-err').textContent = 'Enter your exact flamevannila.eu username — 3–16 letters, numbers or underscores.'; return; }
+    if (isBlacklisted(name)) { $('#si-err').textContent = 'This username cannot play here.'; return; }
     state.username = name;
     save();
     refreshAuthUI();

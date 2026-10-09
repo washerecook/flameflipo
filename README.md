@@ -44,8 +44,8 @@ account — you cannot send someone else's coins to another username.
 1. Join `flamevannila.eu`.
 2. **Pay `washerecookie` the amount you want** with `/pay washerecookie <amount>`
    (the deposit modal copies the command for you).
-3. Type the amount you paid (min 1,000 / max **3,000,000 (3m) per deposit**,
-   **5,000,000 (5m) total per player**) and click **I've paid**.
+3. Type the amount you paid (min 1,000 / max **5,000,000 (5m) per deposit** —
+   unlimited deposits allowed) and click **I've paid**.
 4. A **60-second** verification countdown runs, then the coins are credited — or tap
    **I've paid — check now**, which unlocks **30 seconds** in, to credit instantly
    (the owner verifies payments manually).
@@ -140,8 +140,7 @@ PROMO_DEFAULT_REWARD: 1000,    // reward for any other code
 WITHDRAW_MAX: 5000000,         // 5m cap per withdrawal
 BET_MAX: 5000000,              // 5m max bet in every game
 DEPOSIT_MIN: 1000,
-DEPOSIT_MAX: 3000000,          // 3m cap per deposit
-DEPOSIT_TOTAL_MAX: 5000000,    // 5m cap total per player
+DEPOSIT_MAX: 5000000,          // 5m cap per deposit (unlimited deposits)
 DEPOSIT_DELAY_MS: 60000,       // 60s auto-credit delay
 DEPOSIT_GATE_MS: 30000,        // "I've paid — check now" unlocks after 30s
 BONUS_COOLDOWN_MS: 20 * 60 * 60 * 1000,
